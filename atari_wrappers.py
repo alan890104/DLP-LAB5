@@ -43,15 +43,17 @@ class NoopResetEnv(gym.Wrapper):
         self.noop_max = noop_max
         self.override_num_noops = None
         self.noop_action = 0
-        assert env.unwrapped.get_action_meanings()[0] == 'NOOP'
+        assert env.unwrapped.get_action_meanings()[0] == "NOOP"
 
     def reset(self, **kwargs):
-        """ Do no-op action for a number of steps in [1, noop_max]."""
+        """Do no-op action for a number of steps in [1, noop_max]."""
         self.env.reset(**kwargs)
         if self.override_num_noops is not None:
             noops = self.override_num_noops
         else:
-            noops = self.unwrapped.np_random.randint(1, self.noop_max + 1)  # pylint: disable=E1101
+            noops = self.unwrapped.np_random.randint(
+                1, self.noop_max + 1
+            )  # pylint: disable=E1101
         assert noops > 0
         obs = None
         for _ in range(noops):
@@ -68,7 +70,7 @@ class FireResetEnv(gym.Wrapper):
     def __init__(self, env):
         """Take action on reset for environments that are fixed until firing."""
         gym.Wrapper.__init__(self, env)
-        assert env.unwrapped.get_action_meanings()[1] == 'FIRE'
+        assert env.unwrapped.get_action_meanings()[1] == "FIRE"
         assert len(env.unwrapped.get_action_meanings()) >= 3
 
     def reset(self, **kwargs):
@@ -139,8 +141,10 @@ class MaxAndSkipEnv(gym.Wrapper):
         done = None
         for i in range(self._skip):
             obs, reward, done, info = self.env.step(action)
-            if i == self._skip - 2: self._obs_buffer[0] = obs
-            if i == self._skip - 1: self._obs_buffer[1] = obs
+            if i == self._skip - 2:
+                self._obs_buffer[0] = obs
+            if i == self._skip - 1:
+                self._obs_buffer[1] = obs
             total_reward += reward
             if done:
                 break
@@ -169,12 +173,15 @@ class WarpFrame(gym.ObservationWrapper):
         gym.ObservationWrapper.__init__(self, env)
         self.width = 84
         self.height = 84
-        self.observation_space = spaces.Box(low=0, high=255,
-                                            shape=(self.height, self.width, 1), dtype=np.uint8)
+        self.observation_space = spaces.Box(
+            low=0, high=255, shape=(self.height, self.width, 1), dtype=np.uint8
+        )
 
     def observation(self, frame):
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-        frame = cv2.resize(frame, (self.width, self.height), interpolation=cv2.INTER_AREA)
+        frame = cv2.resize(
+            frame, (self.width, self.height), interpolation=cv2.INTER_AREA
+        )
         return frame[:, :, None]
 
 
@@ -192,7 +199,9 @@ class FrameStack(gym.Wrapper):
         self.k = k
         self.frames = deque([], maxlen=k)
         shp = env.observation_space.shape
-        self.observation_space = spaces.Box(low=0, high=255, shape=(shp[0], shp[1], shp[2] * k), dtype=np.uint8)
+        self.observation_space = spaces.Box(
+            low=0, high=255, shape=(shp[0], shp[1], shp[2] * k), dtype=np.uint8
+        )
 
     def reset(self):
         ob = self.env.reset()
@@ -254,17 +263,19 @@ class LazyFrames(object):
 def make_atari(env_id, max_episode_steps=400000):
     env = gym.make(env_id)
     env._max_episode_steps = max_episode_steps
-    assert 'NoFrameskip' in env.spec.id
+    assert "NoFrameskip" in env.spec.id
     env = NoopResetEnv(env, noop_max=1)
     env = MaxAndSkipEnv(env, skip=4)
     return env
 
 
-def wrap_deepmind(env, episode_life=False, clip_rewards=False, frame_stack=False, scale=False):
+def wrap_deepmind(
+    env, episode_life=False, clip_rewards=False, frame_stack=False, scale=False
+):
     """Configure environment for DeepMind-style Atari."""
     if episode_life:
         env = EpisodicLifeEnv(env)
-    if 'FIRE' in env.unwrapped.get_action_meanings():
+    if "FIRE" in env.unwrapped.get_action_meanings():
         env = FireResetEnv(env)
     env = WarpFrame(env)
     if scale:
@@ -274,4 +285,3 @@ def wrap_deepmind(env, episode_life=False, clip_rewards=False, frame_stack=False
     if frame_stack:
         env = FrameStack(env, 4)
     return env
-

@@ -1,5 +1,7 @@
 log/
 venv/
+ckpt/
 __pycache__/
 *.pth
 *.txt
+Roms/

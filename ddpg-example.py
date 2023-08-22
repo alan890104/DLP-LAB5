@@ -1,6 +1,6 @@
-'''DLP DDPG Lab'''
-__author__ = 'chengscott'
-__copyright__ = 'Copyright 2020, NCTU CGI Lab'
+"""DLP DDPG Lab"""
+__author__ = "chengscott"
+__copyright__ = "Copyright 2020, NCTU CGI Lab"
 import argparse
 from collections import deque
 import itertools
@@ -17,14 +17,14 @@ from torch.utils.tensorboard import SummaryWriter
 class GaussianNoise:
     def __init__(self, dim, mu=None, std=None):
         self.mu = mu if mu else np.zeros(dim)
-        self.std = std if std else np.ones(dim) * .1
+        self.std = std if std else np.ones(dim) * 0.1
 
     def sample(self):
         return np.random.normal(self.mu, self.std)
 
 
 class ReplayMemory:
-    __slots__ = ['buffer']
+    __slots__ = ["buffer"]
 
     def __init__(self, capacity):
         self.buffer = deque(maxlen=capacity)
@@ -37,7 +37,7 @@ class ReplayMemory:
         self.buffer.append(tuple(map(tuple, transition)))
 
     def sample(self, batch_size, device):
-        '''sample a batch of transition tensors'''
+        """sample a batch of transition tensors"""
         ## TODO ##
         raise NotImplementedError
 
@@ -99,30 +99,33 @@ class DDPG:
         self.gamma = args.gamma
 
     def select_action(self, state, noise=True):
-        '''based on the behavior (actor) network and exploration noise'''
+        """based on the behavior (actor) network and exploration noise"""
         ## TODO ##
         raise NotImplementedError
 
     def append(self, state, action, reward, next_state, done):
-        self._memory.append(state, action, [reward / 100], next_state,
-                            [int(done)])
+        self._memory.append(state, action, [reward / 100], next_state, [int(done)])
 
     def update(self):
         # update the behavior networks
         self._update_behavior_network(self.gamma)
         # update the target networks
-        self._update_target_network(self._target_actor_net, self._actor_net,
-                                    self.tau)
-        self._update_target_network(self._target_critic_net, self._critic_net,
-                                    self.tau)
+        self._update_target_network(self._target_actor_net, self._actor_net, self.tau)
+        self._update_target_network(self._target_critic_net, self._critic_net, self.tau)
 
     def _update_behavior_network(self, gamma):
-        actor_net, critic_net, target_actor_net, target_critic_net = self._actor_net, self._critic_net, self._target_actor_net, self._target_critic_net
+        actor_net, critic_net, target_actor_net, target_critic_net = (
+            self._actor_net,
+            self._critic_net,
+            self._target_actor_net,
+            self._target_critic_net,
+        )
         actor_opt, critic_opt = self._actor_opt, self._critic_opt
 
         # sample a minibatch of transitions
         state, action, reward, next_state, done = self._memory.sample(
-            self.batch_size, self.device)
+            self.batch_size, self.device
+        )
 
         ## update critic ##
         # critic loss
@@ -155,7 +158,7 @@ class DDPG:
 
     @staticmethod
     def _update_target_network(target_net, net, tau):
-        '''update target network by _soft_ copying from behavior network'''
+        """update target network by _soft_ copying from behavior network"""
         for target, behavior in zip(target_net.parameters(), net.parameters()):
             ## TODO ##
             raise NotImplementedError
@@ -164,33 +167,37 @@ class DDPG:
         if checkpoint:
             torch.save(
                 {
-                    'actor': self._actor_net.state_dict(),
-                    'critic': self._critic_net.state_dict(),
-                    'target_actor': self._target_actor_net.state_dict(),
-                    'target_critic': self._target_critic_net.state_dict(),
-                    'actor_opt': self._actor_opt.state_dict(),
-                    'critic_opt': self._critic_opt.state_dict(),
-                }, model_path)
+                    "actor": self._actor_net.state_dict(),
+                    "critic": self._critic_net.state_dict(),
+                    "target_actor": self._target_actor_net.state_dict(),
+                    "target_critic": self._target_critic_net.state_dict(),
+                    "actor_opt": self._actor_opt.state_dict(),
+                    "critic_opt": self._critic_opt.state_dict(),
+                },
+                model_path,
+            )
         else:
             torch.save(
                 {
-                    'actor': self._actor_net.state_dict(),
-                    'critic': self._critic_net.state_dict(),
-                }, model_path)
+                    "actor": self._actor_net.state_dict(),
+                    "critic": self._critic_net.state_dict(),
+                },
+                model_path,
+            )
 
     def load(self, model_path, checkpoint=False):
         model = torch.load(model_path)
-        self._actor_net.load_state_dict(model['actor'])
-        self._critic_net.load_state_dict(model['critic'])
+        self._actor_net.load_state_dict(model["actor"])
+        self._critic_net.load_state_dict(model["critic"])
         if checkpoint:
-            self._target_actor_net.load_state_dict(model['target_actor'])
-            self._target_critic_net.load_state_dict(model['target_critic'])
-            self._actor_opt.load_state_dict(model['actor_opt'])
-            self._critic_opt.load_state_dict(model['critic_opt'])
+            self._target_actor_net.load_state_dict(model["target_actor"])
+            self._target_critic_net.load_state_dict(model["target_critic"])
+            self._actor_opt.load_state_dict(model["actor_opt"])
+            self._critic_opt.load_state_dict(model["critic_opt"])
 
 
 def train(args, env, agent, writer):
-    print('Start Training')
+    print("Start Training")
     total_steps = 0
     ewma_reward = 0
     for episode in range(args.episode):
@@ -214,20 +221,19 @@ def train(args, env, agent, writer):
             total_steps += 1
             if done:
                 ewma_reward = 0.05 * total_reward + (1 - 0.05) * ewma_reward
-                writer.add_scalar('Train/Episode Reward', total_reward,
-                                  total_steps)
-                writer.add_scalar('Train/Ewma Reward', ewma_reward,
-                                  total_steps)
+                writer.add_scalar("Train/Episode Reward", total_reward, total_steps)
+                writer.add_scalar("Train/Ewma Reward", ewma_reward, total_steps)
                 print(
-                    'Step: {}\tEpisode: {}\tLength: {:3d}\tTotal reward: {:.2f}\tEwma reward: {:.2f}'
-                    .format(total_steps, episode, t, total_reward,
-                            ewma_reward))
+                    "Step: {}\tEpisode: {}\tLength: {:3d}\tTotal reward: {:.2f}\tEwma reward: {:.2f}".format(
+                        total_steps, episode, t, total_reward, ewma_reward
+                    )
+                )
                 break
     env.close()
 
 
 def test(args, env, agent, writer):
-    print('Start Testing')
+    print("Start Testing")
     seeds = (args.seed + i for i in range(10))
     rewards = []
     for n_episode, seed in enumerate(seeds):
@@ -240,33 +246,33 @@ def test(args, env, agent, writer):
         #         writer.add_scalar('Test/Episode Reward', total_reward, n_episode)
         #         ...
         raise NotImplementedError
-    print('Average Reward', np.mean(rewards))
+    print("Average Reward", np.mean(rewards))
     env.close()
 
 
 def main():
     ## arguments ##
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('-d', '--device', default='cuda')
-    parser.add_argument('-m', '--model', default='ddpg.pth')
-    parser.add_argument('--logdir', default='log/ddpg')
+    parser.add_argument("-d", "--device", default="cuda")
+    parser.add_argument("-m", "--model", default="ddpg.pth")
+    parser.add_argument("--logdir", default="log/ddpg")
     # train
-    parser.add_argument('--warmup', default=10000, type=int)
-    parser.add_argument('--episode', default=1200, type=int)
-    parser.add_argument('--batch_size', default=64, type=int)
-    parser.add_argument('--capacity', default=500000, type=int)
-    parser.add_argument('--lra', default=1e-3, type=float)
-    parser.add_argument('--lrc', default=1e-3, type=float)
-    parser.add_argument('--gamma', default=.99, type=float)
-    parser.add_argument('--tau', default=.005, type=float)
+    parser.add_argument("--warmup", default=10000, type=int)
+    parser.add_argument("--episode", default=1200, type=int)
+    parser.add_argument("--batch_size", default=64, type=int)
+    parser.add_argument("--capacity", default=500000, type=int)
+    parser.add_argument("--lra", default=1e-3, type=float)
+    parser.add_argument("--lrc", default=1e-3, type=float)
+    parser.add_argument("--gamma", default=0.99, type=float)
+    parser.add_argument("--tau", default=0.005, type=float)
     # test
-    parser.add_argument('--test_only', action='store_true')
-    parser.add_argument('--render', action='store_true')
-    parser.add_argument('--seed', default=20200519, type=int)
+    parser.add_argument("--test_only", action="store_true")
+    parser.add_argument("--render", action="store_true")
+    parser.add_argument("--seed", default=20200519, type=int)
     args = parser.parse_args()
 
     ## main ##
-    env = gym.make('LunarLanderContinuous-v2')
+    env = gym.make("LunarLanderContinuous-v2")
     agent = DDPG(args)
     writer = SummaryWriter(args.logdir)
     if not args.test_only:
@@ -276,5 +282,5 @@ def main():
     test(args, env, agent, writer)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
