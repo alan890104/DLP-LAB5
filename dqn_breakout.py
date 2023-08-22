@@ -100,13 +100,13 @@ class DQN:
         if random.random() < epsilon:
             return action_space.sample()
         with torch.no_grad():
-            state = np.transpose(state, (2, 0, 1)) # (H, W, C) -> (C, H, W)
+            state = np.transpose(state, (2, 0, 1))  # (H, W, C) -> (C, H, W)
 
             if state.shape[0] < 4:
                 # pad state with last frame if state is not enough
                 # (C, H, W) -> (4, C, H, W)
                 state = np.concatenate(
-                    [state for _ in range(4 - state.shape[0] +1)], axis=0
+                    [state for _ in range(4 - state.shape[0] + 1)], axis=0
                 )
 
             state = np.expand_dims(state, axis=0)
@@ -143,7 +143,9 @@ class DQN:
 
         # Compute the target Q-values
         with torch.no_grad():
-            q_next = self._target_net(next_state).max(dim=1)[0]  # max 函數返回最大值，所以這裡取的是 "最佳" 下一步動作的 Q-值
+            q_next = self._target_net(next_state).max(dim=1)[
+                0
+            ]  # max 函數返回最大值，所以這裡取的是 "最佳" 下一步動作的 Q-值
             q_target = reward + gamma * q_next * (1 - done)
 
         # Compute and minimize the loss
@@ -222,7 +224,7 @@ def train(args, agent: DQN, writer: SummaryWriter):
 
             if total_steps % args.eval_freq == 0:
                 """You can write another evaluate function, or just call the test function."""
-                test(args, agent, writer)
+                evaludate(args, agent, writer, total_steps)
                 agent.save(args.model + "dqn_" + str(total_steps) + ".pt")
 
             total_steps += 1
@@ -244,6 +246,32 @@ def train(args, agent: DQN, writer: SummaryWriter):
     env.close()
 
 
+@torch.no_grad()
+def evaludate(args, agent: DQN, writer: SummaryWriter, current_steps: int):
+    env_raw = make_atari("BreakoutNoFrameskip-v4")
+    env = wrap_deepmind(env_raw)
+    action_space = env.action_space
+    e_rewards = []
+
+    for i in range(args.test_episode):
+        state = env.reset()
+        e_reward = 0
+        done = False
+
+        while not done:
+            action = agent.select_action(state, args.test_epsilon, action_space)
+            state, reward, done, _ = env.step(action)
+            e_reward += reward
+
+        print("episode {}: {:.2f}".format(i + 1, e_reward))
+        e_rewards.append(e_reward)
+
+    env.close()
+    avg_reward = float(sum(e_rewards)) / float(args.test_episode)
+    writer.add_scalar("Evaluate/Average Reward", avg_reward, current_steps)
+
+
+@torch.no_grad()
 def test(args, agent: DQN, writer: SummaryWriter):
     print("Start Testing")
     env_raw = make_atari("BreakoutNoFrameskip-v4")
@@ -265,11 +293,8 @@ def test(args, agent: DQN, writer: SummaryWriter):
         e_rewards.append(e_reward)
 
     env.close()
-    print(
-        "Average Reward: {:.2f}".format(
-            float(sum(e_rewards)) / float(args.test_episode)
-        )
-    )
+    avg_reward = float(sum(e_rewards)) / float(args.test_episode)
+    print("Average Reward: {:.2f}".format(avg_reward))
 
 
 def main():
@@ -280,7 +305,7 @@ def main():
     parser.add_argument("--logdir", default="log/dqn")
     # train
     parser.add_argument("--warmup", default=20000, type=int)
-    parser.add_argument("--episode", default=20000, type=int)
+    parser.add_argument("--episode", default=50000, type=int)
     parser.add_argument("--capacity", default=100000, type=int)
     parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--lr", default=0.0000625, type=float)
@@ -292,12 +317,16 @@ def main():
     parser.add_argument("--eval_freq", default=200000, type=int)
     # test
     parser.add_argument("--test_only", action="store_true")
-    parser.add_argument("-tmp", "--test_model_path", default="ckpt/dqn_1000000.pt")
+    parser.add_argument("-tmp", "--test_model_path", default="ckpt/dqn_breakout.pt")
     parser.add_argument("--render", action="store_true")
     parser.add_argument("--test_episode", default=10, type=int)
     parser.add_argument("--seed", default=20230422, type=int)
     parser.add_argument("--test_epsilon", default=0.01, type=float)
     args = parser.parse_args()
+
+    import os
+
+    os.makedirs(args.model, exist_ok=True)
 
     ## main ##
     agent = DQN(args)
