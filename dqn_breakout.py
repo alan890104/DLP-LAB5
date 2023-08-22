@@ -204,10 +204,8 @@ def train(args, agent: DQN, writer: SummaryWriter):
             if total_steps < args.warmup:
                 action = action_space.sample()
             else:
-                # select action
                 action = agent.select_action(state, epsilon, action_space)
-                # decay epsilon
-                epsilon = max((1 - args.eps_min) / args.eps_decay, args.eps_min)
+                epsilon = max(epsilon * args.eps_decay, args.eps_min)
 
             # execute action
             next_state, reward, done, _ = env.step(action)
@@ -286,7 +284,7 @@ def main():
     parser.add_argument("--capacity", default=100000, type=int)
     parser.add_argument("--batch_size", default=32, type=int)
     parser.add_argument("--lr", default=0.0000625, type=float)
-    parser.add_argument("--eps_decay", default=1000000, type=float)
+    parser.add_argument("--eps_decay", default=0.995, type=float)
     parser.add_argument("--eps_min", default=0.1, type=float)
     parser.add_argument("--gamma", default=0.99, type=float)
     parser.add_argument("--freq", default=4, type=int)
