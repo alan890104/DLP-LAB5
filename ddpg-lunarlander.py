@@ -127,7 +127,7 @@ class DDPG:
         return action.cpu().numpy().squeeze()
 
     def append(self, state, action, reward, next_state, done):
-        self._memory.append(state, action, [reward / 100], next_state, [int(done)])
+        self._memory.append(state, action, [reward], next_state, [int(done)])
 
     def update(self):
         # update the behavior networks
@@ -275,7 +275,10 @@ def test(args, env: gym.Env, agent: DDPG, writer: SummaryWriter):
                 rewards.append(total_reward)
                 print("total reward: " + str(total_reward))
                 break
-    print("Average Reward", np.mean(rewards))
+    mean = np.mean(rewards)
+    print("Average Reward", mean)
+    base_path = args.model.split(".")[0]
+    agent.save(base_path + "_{:.2f}.pth".format(mean))
     env.close()
 
 

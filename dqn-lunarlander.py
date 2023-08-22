@@ -66,7 +66,7 @@ class DQN:
         self.gamma = args.gamma
         self.freq = args.freq
         self.target_freq = args.target_freq
-        self.tau = 0.3
+        self.tau = 0.005
 
     def select_action(self, state, epsilon: float, action_space: gym.Space):
         if random.random() < epsilon:
@@ -207,7 +207,10 @@ def test(args, env: gym.Env, agent: DQN, writer: SummaryWriter):
                 rewards.append(total_reward)
                 print(f"Episode {n_episode}: Total Reward: {total_reward}")
 
-    print("Average Reward", np.mean(rewards))
+    mean = np.mean(rewards)
+    print("Average Reward", mean)
+    base_path = args.model.split(".")[0]
+    agent.save(base_path + "_{:.2f}.pth".format(mean))
     env.close()
 
 
