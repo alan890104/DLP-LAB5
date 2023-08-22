@@ -222,6 +222,7 @@ def train(args, env: gym.Env, agent: DDPG, writer: SummaryWriter):
     print("Start Training")
     total_steps = 0
     ewma_reward = 0
+    best_ewma_reward = -np.inf
     for episode in range(args.episode):
         total_reward = 0
         state, _ = env.reset()
@@ -243,6 +244,9 @@ def train(args, env: gym.Env, agent: DDPG, writer: SummaryWriter):
             total_steps += 1
             if done:
                 ewma_reward = 0.05 * total_reward + (1 - 0.05) * ewma_reward
+                if ewma_reward > best_ewma_reward:
+                    best_ewma_reward = ewma_reward
+                    agent.save(args.model)
                 writer.add_scalar("Train/Episode Reward", total_reward, total_steps)
                 writer.add_scalar("Train/Ewma Reward", ewma_reward, total_steps)
                 print(
